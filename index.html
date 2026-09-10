@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOLO-CORE — คอมพิวเตอร์ ม.4</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap');
+
+  :root{
+    --void:#04060D;
+    --void-2:#070B16;
+    --panel:rgba(14,22,38,0.72);
+    --panel-solid:#0B1220;
+    --glass-line:rgba(80,220,255,0.28);
+    --glass-line-soft:rgba(80,220,255,0.12);
+    --cyan:#4BE8FF;
+    --cyan-dim:#1B6E80;
+    --magenta:#FF4FD8;
+    --magenta-dim:#7A2361;
+    --amber:#FFC24B;
+    --violet:#B27CFF;
+    --text:#E8F6FF;
+    --text-dim:#7CA0B8;
+    --danger:#FF5E6B;
+    --success:#3FF2A6;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--void);
+    color:var(--text);
+    font-family:'Rajdhani','Kanit',sans-serif;
+    min-height:100vh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  #starfield{
+    position:fixed;inset:0;z-index:0;
+    background:var(--void);
+  }
+  .horizon-glow{
+    position:fixed;left:50%;top:-20%;width:900px;height:900px;
+    transform:translateX(-50%);
+    background:radial-gradient(circle, rgba(75,232,255,0.10) 0%, rgba(178,124,255,0.06) 35%, transparent 70%);
+    z-index:0;pointer-events:none;
+  }
+  .grid-floor{
+    position:fixed;left:0;right:0;bottom:0;height:280px;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(75,232,255,0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(75,232,255,0.14) 1px, transparent 1px);
+    background-size:44px 44px;
+    -webkit-mask-image:linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            mask-image:linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    transform:perspective(400px) rotateX(60deg);
+    transform-origin:bottom;
+    opacity:.5;
+  }
+
+  .stage{
+    position:relative;z-index:1;
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:38px 16px 60px;
+    perspective:1400px;
+  }
+  .rig{width:100%;max-width:660px;}
+
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .brand{
+    font-family:'Orbitron',sans-serif;font-weight:700;font-size:13px;
+    letter-spacing:.22em;color:var(--cyan);text-transform:uppercase;
+    text-shadow:0 0 10px rgba(75,232,255,0.55);
+  }
+  .brand .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);
+    box-shadow:0 0 8px var(--success);margin-right:8px;vertical-align:1px;}
+  .subject{
+    font-family:'Rajdhani',sans-serif;font-weight:600;font-size:12px;color:var(--text-dim);
+    letter-spacing:.08em;text-transform:uppercase;
+  }
+  h1{
+    font-family:'Orbitron',sans-serif;font-weight:900;font-size:27px;margin:6px 0 4px;
+    letter-spacing:.02em;
+    background:linear-gradient(90deg, var(--cyan), var(--violet) 55%, var(--magenta));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 14px rgba(75,232,255,0.25));
+  }
+  .tag{font-size:14px;color:var(--text-dim);margin-bottom:22px;font-weight:500;}
+
+  .hud-corner{position:absolute;width:18px;height:18px;pointer-events:none;}
+  .hud-corner.tl{top:-1px;left:-1px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);}
+  .hud-corner.tr{top:-1px;right:-1px;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan);}
+  .hud-corner.bl{bottom:-1px;left:-1px;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan);}
+  .hud-corner.br{bottom:-1px;right:-1px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);}
+
+  .glasspane{
+    position:relative;
+    background:var(--panel);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border:1px solid var(--glass-line);
+    border-radius:10px;
+    box-shadow:
+      0 0 0 1px rgba(75,232,255,0.05) inset,
+      0 20px 60px -20px rgba(0,0,0,0.7),
+      0 0 40px -10px rgba(75,232,255,0.12);
+    transform-style:preserve-3d;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s ease;
+  }
+
+  .boot{padding:30px 28px;}
+  .boot-log{
+    font-family:'Rajdhani',monospace;font-size:13.5px;color:var(--cyan);
+    line-height:2;min-height:170px;white-space:pre-wrap;letter-spacing:.02em;
+  }
+  .boot-log .ok{color:var(--text-dim);}
+  .boot-log .tick{color:var(--success);}
+  .boot-log .cursor{display:inline-block;width:8px;height:15px;background:var(--cyan);
+    box-shadow:0 0 8px var(--cyan);vertical-align:-2px;animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .best-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;color:var(--text-dim);
+    border-top:1px solid var(--glass-line-soft);margin-top:16px;padding-top:14px;
+    text-transform:uppercase;letter-spacing:.05em;
+  }
+  .best-row b{color:var(--violet);text-shadow:0 0 8px rgba(178,124,255,0.6);}
+
+  .btn-3d{
+    position:relative;width:100%;border:none;cursor:pointer;
+    font-family:'Orbitron',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;
+    text-transform:uppercase;padding:16px 0;border-radius:6px;
+    background:linear-gradient(180deg, rgba(75,232,255,0.22), rgba(75,232,255,0.06));
+    color:var(--cyan);
+    border:1px solid var(--glass-line);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 6px 18px -6px rgba(75,232,255,0.35),
+      0 0 0 rgba(75,232,255,0);
+    transition:transform .12s ease, box-shadow .18s ease, background .18s ease;
+    margin-top:18px;
+  }
+  .btn-3d:hover:not(:disabled){
+    background:linear-gradient(180deg, rgba(75,232,255,0.32), rgba(75,232,255,0.1));
+    box-shadow:0 1px 0 rgba(255,255,255,0.08) inset, 0 10px 26px -6px rgba(75,232,255,0.5);
+    transform:translateY(-2px);
+  }
+  .btn-3d:active:not(:disabled){transform:translateY(1px) scale(0.99);}
+  .btn-3d:disabled{opacity:.3;cursor:default;}
+
+  .panel-wrap{display:none;}
+  .panel-wrap.active{display:block;}
+
+  .statusbar{
+    display:flex;justify-content:space-between;align-items:center;padding:15px 22px;
+    border-bottom:1px solid var(--glass-line-soft);
+    font-family:'Rajdhani',sans-serif;font-weight:600;font-size:13px;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.05em;
+  }
+  .statusbar .score{color:var(--amber);font-weight:700;text-shadow:0 0 8px rgba(255,194,75,0.5);}
+  .streak-badge{
+    display:inline-flex;align-items:center;gap:6px;color:var(--magenta);font-weight:700;
+    opacity:0;transform:translateY(-3px) scale(.9);transition:opacity .2s ease, transform .2s ease;
+    text-shadow:0 0 8px rgba(255,79,216,0.6);
+  }
+  .streak-badge.show{opacity:1;transform:translateY(0) scale(1);}
+  .streak-dot{width:7px;height:7px;border-radius:50%;background:var(--magenta);box-shadow:0 0 8px var(--magenta);}
+
+  .trace-progress{display:flex;gap:5px;padding:16px 22px 0;}
+  .node{flex:1;height:6px;border-radius:2px;background:rgba(75,232,255,0.1);
+    box-shadow:0 0 0 1px rgba(75,232,255,0.06) inset;transition:background .3s ease, box-shadow .3s ease;}
+  .node.done{background:var(--success);box-shadow:0 0 10px rgba(63,242,166,0.7);}
+  .node.wrong{background:var(--danger);box-shadow:0 0 10px rgba(255,94,107,0.7);}
+  .node.current{background:var(--amber);box-shadow:0 0 10px rgba(255,194,75,0.7);}
+
+  .timerbar-wrap{padding:14px 22px 0;}
+  .timerbar-track{height:4px;background:rgba(75,232,255,0.1);border-radius:2px;overflow:hidden;}
+  .timerbar-fill{height:100%;background:linear-gradient(90deg, var(--cyan), var(--violet));
+    box-shadow:0 0 10px rgba(75,232,255,0.7);width:100%;transition:width 1s linear, background .3s ease;}
+  .timerbar-fill.low{background:linear-gradient(90deg, var(--danger), var(--magenta));
+    box-shadow:0 0 10px rgba(255,94,107,0.8);}
+
+  .qwrap{padding:24px 22px 28px;}
+  .qmeta{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .qnum{font-family:'Orbitron',sans-serif;font-size:11.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;}
+  .qtext{font-size:20px;font-weight:600;line-height:1.5;margin-bottom:22px;color:var(--text);}
+  .choices{display:flex;flex-direction:column;gap:11px;}
+  .choice{
+    display:flex;align-items:center;gap:14px;text-align:left;
+    background:rgba(20,32,52,0.55);
+    border:1px solid var(--glass-line-soft);border-radius:6px;padding:14px 17px;color:var(--text);
+    font-family:'Rajdhani',sans-serif;font-weight:600;font-size:15.5px;cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, transform .12s ease, box-shadow .15s ease;
+  }
+  .choice:hover:not(:disabled){
+    border-color:var(--cyan);background:rgba(75,232,255,0.08);
+    box-shadow:0 0 18px -6px rgba(75,232,255,0.5);transform:translateX(3px);
+  }
+  .choice .k{
+    font-family:'Orbitron',sans-serif;font-size:12px;color:var(--text-dim);
+    border:1px solid var(--glass-line);border-radius:4px;width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .choice.correct{border-color:var(--success);background:rgba(63,242,166,.12);box-shadow:0 0 20px -4px rgba(63,242,166,.5);}
+  .choice.correct .k{border-color:var(--success);color:var(--success);}
+  .choice.wrong{border-color:var(--danger);background:rgba(255,94,107,.12);box-shadow:0 0 20px -4px rgba(255,94,107,.5);}
+  .choice.wrong .k{border-color:var(--danger);color:var(--danger);}
+  .choice:disabled{cursor:default;}
+  .choice:disabled:hover{transform:none;}
+
+  .feedback{
+    margin-top:18px;padding:15px 18px;border-radius:6px;font-size:14px;line-height:1.65;
+    display:none;border-left:3px solid var(--cyan);
+    background:rgba(20,32,52,0.6);color:var(--text-dim);font-weight:500;
+  }
+  .feedback.show{display:block;}
+  .feedback b{color:var(--text);}
+
+  .next-btn{
+    margin-top:20px;width:100%;background:transparent;border:1px solid var(--cyan-dim);color:var(--cyan);
+    border-radius:6px;font-family:'Orbitron',sans-serif;font-weight:700;font-size:13px;letter-spacing:.06em;
+    text-transform:uppercase;padding:14px 0;cursor:pointer;display:none;transition:all .15s ease;
+  }
+  .next-btn.show{display:block;}
+  .next-btn:hover{background:rgba(75,232,255,0.1);box-shadow:0 0 20px -6px rgba(75,232,255,0.6);}
+
+  .hint{
+    text-align:center;font-family:'Rajdhani',sans-serif;font-size:11.5px;color:var(--text-dim);
+    margin-top:16px;letter-spacing:.05em;opacity:.6;text-transform:uppercase;
+  }
+
+  .result{display:none;padding:36px 28px 30px;text-align:center;}
+  .result.active{display:block;}
+  .result-label{font-family:'Orbitron',sans-serif;font-size:12px;color:var(--text-dim);letter-spacing:.18em;text-transform:uppercase;}
+  .result-score{
+    font-size:62px;font-weight:900;margin:10px 0 2px;font-family:'Orbitron',sans-serif;
+    background:linear-gradient(180deg, var(--cyan), var(--violet));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 20px rgba(75,232,255,0.4));
+  }
+  .result-sub{font-size:14.5px;color:var(--text-dim);margin-bottom:6px;font-weight:600;}
+  .result-best{font-size:12.5px;color:var(--violet);font-family:'Rajdhani',sans-serif;font-weight:700;
+    margin-bottom:24px;text-transform:uppercase;letter-spacing:.05em;}
+  .rank{
+    display:inline-block;padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;
+    margin-bottom:28px;font-family:'Orbitron',sans-serif;letter-spacing:.03em;
+  }
+  .review{text-align:left;border-top:1px solid var(--glass-line-soft);padding-top:20px;margin-bottom:24px;}
+  .review-item{
+    display:flex;justify-content:space-between;gap:10px;padding:10px 0;
+    border-bottom:1px solid rgba(75,232,255,0.06);font-size:13.5px;font-weight:500;
+  }
+  .review-item:last-child{border-bottom:none;}
+  .review-item .mark{flex-shrink:0;font-family:'Orbitron',sans-serif;font-weight:700;}
+  .review-item .mark.y{color:var(--success);text-shadow:0 0 6px rgba(63,242,166,0.6);}
+  .review-item .mark.n{color:var(--danger);text-shadow:0 0 6px rgba(255,94,107,0.6);}
+  .review-item .rq{color:var(--text-dim);flex:1;text-align:left;padding-left:4px;}
+  .review-item .rt{color:var(--text-dim);font-family:'Rajdhani',sans-serif;font-size:11.5px;text-transform:uppercase;}
+
+  .footer-trace{
+    text-align:center;font-family:'Orbitron',sans-serif;font-size:10.5px;color:var(--text-dim);
+    margin-top:20px;letter-spacing:.15em;opacity:.55;text-transform:uppercase;
+  }
+
+  /* ===== animations ===== */
+  @keyframes panelWarpIn{
+    0%{opacity:0;transform:scale(.92) rotateX(8deg) translateY(18px);filter:blur(6px);}
+    60%{opacity:1;filter:blur(0);}
+    100%{opacity:1;transform:scale(1) rotateX(0) translateY(0);}
+  }
+  @keyframes panelWarpOut{
+    0%{opacity:1;transform:scale(1) rotateX(0) translateY(0);filter:blur(0);}
+    100%{opacity:0;transform:scale(.94) rotateX(-6deg) translateY(-14px);filter:blur(6px);}
+  }
+  .panel-warp-in{animation:panelWarpIn .5s cubic-bezier(.2,.8,.2,1) both;}
+  .panel-warp-out{animation:panelWarpOut .32s cubic-bezier(.4,0,1,1) both;}
+
+  @keyframes qSlideIn{
+    0%{opacity:0;transform:translateX(46px) rotateY(-10deg);filter:blur(4px);}
+    100%{opacity:1;transform:translateX(0) rotateY(0);filter:blur(0);}
+  }
+  @keyframes qSlideOut{
+    0%{opacity:1;transform:translateX(0) rotateY(0);filter:blur(0);}
+    100%{opacity:0;transform:translateX(-46px) rotateY(10deg);filter:blur(4px);}
+  }
+  .qwrap-in{animation:qSlideIn .42s cubic-bezier(.2,.8,.2,1) both;}
+  .qwrap-out{animation:qSlideOut .22s cubic-bezier(.4,0,1,1) both;}
+
+  @keyframes choiceRise{
+    0%{opacity:0;transform:translateY(14px) scale(.97);}
+    100%{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .choice-rise{animation:choiceRise .38s cubic-bezier(.2,.8,.2,1) both;}
+  .choice-rise:nth-child(1){animation-delay:.03s;}
+  .choice-rise:nth-child(2){animation-delay:.09s;}
+  .choice-rise:nth-child(3){animation-delay:.15s;}
+  .choice-rise:nth-child(4){animation-delay:.21s;}
+
+  @keyframes pulseCorrect{
+    0%{box-shadow:0 0 0 0 rgba(63,242,166,.6);}
+    60%{box-shadow:0 0 0 14px rgba(63,242,166,0);}
+    100%{box-shadow:0 0 20px -4px rgba(63,242,166,.5);}
+  }
+  .pulse-correct{animation:pulseCorrect .6s ease-out;}
+
+  @keyframes shakeWrong{
+    0%,100%{transform:translateX(0);}
+    20%{transform:translateX(-7px);}
+    40%{transform:translateX(6px);}
+    60%{transform:translateX(-4px);}
+    80%{transform:translateX(3px);}
+  }
+  .shake-wrong{animation:shakeWrong .4s ease;}
+
+  @keyframes feedbackDrop{
+    0%{opacity:0;transform:translateY(-10px) scaleY(.9);}
+    100%{opacity:1;transform:translateY(0) scaleY(1);}
+  }
+  .feedback.show{animation:feedbackDrop .35s cubic-bezier(.2,.8,.2,1) both;transform-origin:top;}
+
+  @keyframes scoreBump{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.35);text-shadow:0 0 16px currentColor;}
+    100%{transform:scale(1);}
+  }
+  .score-bump{animation:scoreBump .38s ease;display:inline-block;}
+
+  @keyframes nodeFillPulse{
+    0%{box-shadow:0 0 0 0 currentColor;}
+    70%{box-shadow:0 0 12px 4px currentColor;}
+    100%{box-shadow:0 0 10px rgba(63,242,166,.7);}
+  }
+  .node-pulse{animation:nodeFillPulse .5s ease-out;}
+
+  @keyframes streakPop{
+    0%{transform:translateY(0) scale(1);}
+    30%{transform:translateY(-4px) scale(1.18);}
+    100%{transform:translateY(0) scale(1);}
+  }
+  .streak-pop{animation:streakPop .35s ease;}
+
+  @keyframes timerTick{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.12);}
+  }
+  #qTimer.tick{animation:timerTick .3s ease;color:var(--danger);}
+
+  @keyframes resultCountUp{
+    0%{opacity:0;transform:translateY(10px) scale(.9);}
+    100%{opacity:1;transform:translateY(0) scale(1);}
+  }
+  .result-score{animation:resultCountUp .5s cubic-bezier(.2,.8,.2,1) both;}
+  .rank{animation:resultCountUp .5s cubic-bezier(.2,.8,.2,1) .15s both;}
+
+  @keyframes reviewRise{
+    0%{opacity:0;transform:translateX(-10px);}
+    100%{opacity:1;transform:translateX(0);}
+  }
+  .review-item{animation:reviewRise .3s ease both;}
+
+  @media (prefers-reduced-motion: reduce){
+    .panel-warp-in,.panel-warp-out,.qwrap-in,.qwrap-out,.choice-rise,.pulse-correct,
+    .shake-wrong,.feedback.show,.score-bump,.node-pulse,.streak-pop,#qTimer.tick,
+    .result-score,.rank,.review-item{animation:none !important;}
+  }
+</style>
+</head>
+<body>
+<canvas id="starfield"></canvas>
+<div class="horizon-glow"></div>
+<div class="grid-floor"></div>
+
+<div class="stage">
+<div class="rig">
+  <div class="header">
+    <span class="brand"><span class="dot"></span>HOLO-CORE // CS-UNIT</span>
+    <span class="subject">วิชาคอมพิวเตอร์ · ม.4</span>
+  </div>
+  <h1>ระบบทดสอบความรู้คอมพิวเตอร์</h1>
+  <div class="tag">สุ่ม 10 คำถามจากคลัง 30 ข้อทุกรอบ — จับเวลาข้อละ 20 วินาที</div>
+
+  <div class="glasspane" id="bootScreen">
+    <div class="hud-corner tl"></div><div class="hud-corner tr"></div>
+    <div class="hud-corner bl"></div><div class="hud-corner br"></div>
+    <div class="boot">
+      <div class="boot-log" id="bootLog"></div>
+      <div class="best-row"><span>คะแนนสูงสุด (เซสชันนี้)</span><b id="bestVal">— ยังไม่มี</b></div>
+      <button class="btn-3d" id="startBtn" disabled>เริ่มทดสอบ</button>
+    </div>
+  </div>
+
+  <div class="panel-wrap" id="gamePanelWrap">
+    <div class="glasspane" id="gamePanel">
+      <div class="hud-corner tl"></div><div class="hud-corner tr"></div>
+      <div class="hud-corner bl"></div><div class="hud-corner br"></div>
+      <div class="statusbar">
+        <span>คำถามที่ <span id="curNum">1</span>/<span id="totalNum">10</span></span>
+        <span class="streak-badge" id="streakBadge"><span class="streak-dot"></span><span id="streakVal"></span></span>
+        <span class="score">คะแนน: <span id="scoreVal">0</span></span>
+      </div>
+      <div class="trace-progress" id="traceProgress"></div>
+      <div class="timerbar-wrap"><div class="timerbar-track"><div class="timerbar-fill" id="timerFill"></div></div></div>
+      <div class="qwrap">
+        <div class="qmeta">
+          <span class="qnum" id="qCat">หมวด</span>
+          <span class="qnum" id="qTimer">20s</span>
+        </div>
+        <div class="qtext" id="qText">…</div>
+        <div class="choices" id="choices"></div>
+        <div class="feedback" id="feedback"></div>
+        <button class="next-btn" id="nextBtn">ข้อถัดไป →</button>
+        <div class="hint">กด A / B / C / D บนคีย์บอร์ดเพื่อเลือกคำตอบ</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-wrap" id="resultPanelWrap">
+    <div class="glasspane" id="resultPanel">
+      <div class="hud-corner tl"></div><div class="hud-corner tr"></div>
+      <div class="hud-corner bl"></div><div class="hud-corner br"></div>
+      <div class="result active">
+        <div class="result-label">ผลการทดสอบ</div>
+        <div class="result-score" id="finalScore">0/10</div>
+        <div class="result-sub" id="finalSub"></div>
+        <div class="result-best" id="finalBest"></div>
+        <div class="rank" id="rankBadge"></div>
+        <div class="review" id="reviewList"></div>
+        <button class="btn-3d" id="retryBtn">สุ่มข้อใหม่ เล่นอีกครั้ง</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-trace">SYS.READY — ม.4 COMPUTER SCIENCE MODULE — POOL: 30</div>
+</div>
+</div>
+
+<script>
+/* starfield */
+(function(){
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let w, h, stars;
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    const count = Math.floor((w*h)/9000);
+    stars = Array.from({length: count}, () => ({
+      x: Math.random()*w, y: Math.random()*h,
+      r: Math.random()*1.3 + 0.2,
+      tw: Math.random()*Math.PI*2,
+      sp: Math.random()*0.02 + 0.005,
+      hue: Math.random() < 0.15 ? 'm' : (Math.random() < 0.3 ? 'v' : 'c')
+    }));
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    stars.forEach(s => {
+      s.tw += s.sp;
+      const alpha = 0.35 + Math.sin(s.tw)*0.35 + 0.3;
+      let color = '75,232,255';
+      if(s.hue==='m') color='255,79,216';
+      else if(s.hue==='v') color='178,124,255';
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba('+color+','+Math.max(alpha,0.15)+')';
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+})();
+
+/* 3D tilt on glass panes */
+(function(){
+  document.querySelectorAll('.glasspane').forEach(pane => {
+    pane.addEventListener('mousemove', (e) => {
+      const r = pane.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      pane.style.transform = 'rotateY('+(px*4)+'deg) rotateX('+(-py*4)+'deg) translateZ(6px)';
+    });
+    pane.addEventListener('mouseleave', () => {
+      pane.style.transform = 'rotateY(0deg) rotateX(0deg) translateZ(0px)';
+    });
+  });
+})();
+
+const POOL = [
+  {cat:"ระบบคอมพิวเตอร์", q:"หน่วยใดทำหน้าที่เป็น “สมอง” ควบคุมการทำงานของคอมพิวเตอร์ทั้งระบบ",
+    choices:["หน่วยความจำหลัก (RAM)","หน่วยประมวลผลกลาง (CPU)","หน่วยเก็บข้อมูลสำรอง","การ์ดจอ (GPU)"],correct:1,
+    explain:"CPU (Central Processing Unit) ทำหน้าที่ประมวลผลคำสั่งและควบคุมการทำงานของอุปกรณ์ทุกส่วนในเครื่อง จึงถูกเรียกว่าเป็นสมองของคอมพิวเตอร์"},
+  {cat:"การแทนข้อมูล", q:"เลขฐานสอง 1011 มีค่าเท่ากับเลขฐานสิบใด",
+    choices:["9","11","13","10"],correct:1,
+    explain:"1011₂ = (1×8)+(0×4)+(1×2)+(1×1) = 8+0+2+1 = 11 ในเลขฐานสิบ"},
+  {cat:"ฮาร์ดแวร์", q:"อุปกรณ์ใดจัดเป็นหน่วยความจำแบบ “ลบเลือนได้” (volatile) ซึ่งข้อมูลจะหายไปเมื่อปิดเครื่อง",
+    choices:["ฮาร์ดดิสก์ (HDD)","SSD","RAM","ROM"],correct:2,
+    explain:"RAM เป็นหน่วยความจำหลักที่ใช้พักข้อมูลระหว่างการทำงาน ข้อมูลจะหายไปทันทีที่ไฟดับหรือปิดเครื่อง จึงเรียกว่า volatile memory"},
+  {cat:"ซอฟต์แวร์", q:"โปรแกรมประเภทใดจัดเป็น “ระบบปฏิบัติการ” (Operating System)",
+    choices:["Microsoft Word","Windows","Adobe Photoshop","Google Chrome"],correct:1,
+    explain:"Windows เป็นซอฟต์แวร์ระบบ (System Software) ที่จัดการทรัพยากรเครื่องและเป็นตัวกลางระหว่างผู้ใช้กับฮาร์ดแวร์ ส่วนตัวเลือกอื่นเป็นซอฟต์แวร์ประยุกต์"},
+  {cat:"เครือข่ายคอมพิวเตอร์", q:"อุปกรณ์ใดทำหน้าที่เชื่อมต่อเครือข่ายภายในบ้านหรือสำนักงานเข้ากับอินเทอร์เน็ต",
+    choices:["เมาส์ไร้สาย","เราเตอร์ (Router)","แป้นพิมพ์","ลำโพง"],correct:1,
+    explain:"เราเตอร์ทำหน้าที่จัดเส้นทางข้อมูล (routing) และเชื่อมเครือข่ายภายในเข้ากับเครือข่ายภายนอกอย่างอินเทอร์เน็ต"},
+  {cat:"หน่วยข้อมูล", q:"1 ไบต์ (Byte) ประกอบด้วยกี่บิต (bit)",
+    choices:["4 บิต","8 บิต","16 บิต","2 บิต"],correct:1,
+    explain:"1 ไบต์ = 8 บิต ซึ่งเป็นหน่วยพื้นฐานที่ใช้แทนตัวอักษรหนึ่งตัวในระบบคอมพิวเตอร์"},
+  {cat:"ฮาร์ดแวร์", q:"อุปกรณ์ใดจัดเป็นหน่วยรับข้อมูล (Input Device)",
+    choices:["จอภาพ (Monitor)","เครื่องพิมพ์ (Printer)","สแกนเนอร์ (Scanner)","ลำโพง (Speaker)"],correct:2,
+    explain:"สแกนเนอร์ใช้รับข้อมูลจากภาพหรือเอกสารเข้าสู่เครื่อง จึงจัดเป็นหน่วยรับข้อมูล ส่วนจอภาพ เครื่องพิมพ์ และลำโพงเป็นหน่วยแสดงผล"},
+  {cat:"ซอฟต์แวร์", q:"ภาษาโปรแกรมที่เครื่องคอมพิวเตอร์เข้าใจและประมวลผลได้โดยตรง คือภาษาใด",
+    choices:["ภาษาเครื่อง (Machine Language)","ภาษา Python","ภาษา C++","ภาษา Java"],correct:0,
+    explain:"ภาษาเครื่องประกอบด้วยรหัสเลขฐานสอง (0 และ 1) ซึ่งเป็นภาษาเดียวที่ CPU ประมวลผลได้โดยตรง ภาษาระดับสูงต้องผ่านการแปลก่อน"},
+  {cat:"ระบบคอมพิวเตอร์", q:"ขั้นตอนการทำงานพื้นฐานของคอมพิวเตอร์เรียงลำดับอย่างไร",
+    choices:["ประมวลผล → รับข้อมูล → แสดงผล","รับข้อมูล → ประมวลผล → แสดงผล","แสดงผล → รับข้อมูล → ประมวลผล","รับข้อมูล → แสดงผล → ประมวลผล"],correct:1,
+    explain:"หลักการทำงานพื้นฐานคือ Input → Process → Output ซึ่งเป็นวงจรการทำงานหลักของคอมพิวเตอร์ทุกเครื่อง"},
+  {cat:"เครือข่ายคอมพิวเตอร์", q:"\"IP Address\" มีหน้าที่หลักคืออะไร",
+    choices:["เข้ารหัสไฟล์เพื่อความปลอดภัย","ระบุตัวตนของอุปกรณ์บนเครือข่าย","เพิ่มความเร็วอินเทอร์เน็ต","จัดเก็บข้อมูลสำรอง"],correct:1,
+    explain:"IP Address คือหมายเลขประจำเครื่องที่ใช้ระบุตัวตนของอุปกรณ์แต่ละเครื่องบนเครือข่าย ทำให้ข้อมูลถูกส่งไปยังปลายทางที่ถูกต้อง"},
+  {cat:"หน่วยข้อมูล", q:"1 กิโลไบต์ (KB) เท่ากับกี่ไบต์ (ตามมาตรฐานที่ใช้ทั่วไปในระบบคอมพิวเตอร์)",
+    choices:["100 ไบต์","1,000 ไบต์","1,024 ไบต์","10,240 ไบต์"],correct:2,
+    explain:"ในระบบเลขฐานสอง 1 KB = 2¹⁰ = 1,024 ไบต์ ซึ่งเป็นค่ามาตรฐานที่ใช้อ้างอิงในหน่วยความจำคอมพิวเตอร์"},
+  {cat:"ฮาร์ดแวร์", q:"เมนบอร์ด (Motherboard) มีหน้าที่หลักอย่างไร",
+    choices:["จัดเก็บไฟล์ถาวร","เป็นแผงวงจรหลักเชื่อมต่ออุปกรณ์ทุกชิ้นเข้าด้วยกัน","แสดงผลภาพบนจอ","ระบายความร้อนของ CPU"],correct:1,
+    explain:"เมนบอร์ดเป็นแผงวงจรหลักที่เชื่อมต่อ CPU, RAM, และอุปกรณ์อื่น ๆ เข้าด้วยกันให้ทำงานประสานกันได้"},
+  {cat:"ซอฟต์แวร์", q:"ข้อใดจัดเป็น “ซอฟต์แวร์ประยุกต์” (Application Software)",
+    choices:["Windows","Linux","macOS","Microsoft Excel"],correct:3,
+    explain:"Microsoft Excel เป็นโปรแกรมที่ผู้ใช้ใช้งานเพื่อทำงานเฉพาะด้าน (คำนวณ/ตาราง) จึงเป็นซอฟต์แวร์ประยุกต์ ส่วนอีก 3 ตัวเลือกเป็นระบบปฏิบัติการ"},
+  {cat:"เครือข่ายคอมพิวเตอร์", q:"เครือข่ายที่ครอบคลุมพื้นที่กว้าง เช่น เชื่อมระหว่างประเทศ เรียกว่าอะไร",
+    choices:["LAN (Local Area Network)","WAN (Wide Area Network)","PAN (Personal Area Network)","MAN (Metropolitan Area Network)"],correct:1,
+    explain:"WAN ครอบคลุมพื้นที่กว้างมาก เช่น ระดับประเทศหรือระดับโลก อินเทอร์เน็ตก็จัดเป็น WAN ที่ใหญ่ที่สุด"},
+  {cat:"การแทนข้อมูล", q:"ระบบเลขฐานที่คอมพิวเตอร์ใช้ในการประมวลผลข้อมูลภายในคือฐานใด",
+    choices:["ฐานสิบ (Decimal)","ฐานแปด (Octal)","ฐานสอง (Binary)","ฐานสิบหก (Hexadecimal)"],correct:2,
+    explain:"คอมพิวเตอร์ประมวลผลด้วยสัญญาณไฟฟ้าที่มีสองสถานะ (มี/ไม่มีกระแส) จึงใช้เลขฐานสอง (0 และ 1) เป็นพื้นฐาน"},
+  {cat:"หน่วยข้อมูล", q:"หน่วยความจำสำรองชนิดใดที่ไม่มีชิ้นส่วนเคลื่อนไหว ทำให้อ่าน-เขียนข้อมูลได้เร็วกว่าฮาร์ดดิสก์แบบจานหมุน",
+    choices:["HDD","SSD","Floppy Disk","CD-ROM"],correct:1,
+    explain:"SSD (Solid State Drive) ใช้ชิปหน่วยความจำแฟลชแทนจานแม่เหล็ก ไม่มีชิ้นส่วนกล ทำให้เร็วและทนทานกว่า HDD"},
+  {cat:"ระบบคอมพิวเตอร์", q:"ข้อใดคือหน้าที่หลักของระบบปฏิบัติการ (Operating System)",
+    choices:["สร้างเอกสารและตกแต่งภาพ","จัดการทรัพยากรฮาร์ดแวร์และเป็นตัวกลางกับผู้ใช้","เชื่อมต่ออินเทอร์เน็ตเท่านั้น","เล่นไฟล์เสียงและวิดีโอเท่านั้น"],correct:1,
+    explain:"ระบบปฏิบัติการทำหน้าที่จัดการทรัพยากรของเครื่อง (CPU, หน่วยความจำ, อุปกรณ์ต่อพ่วง) และเป็นตัวกลางเชื่อมผู้ใช้กับฮาร์ดแวร์"},
+  {cat:"ความปลอดภัยไซเบอร์", q:"โปรแกรมชนิดใดถูกออกแบบมาเพื่อทำอันตรายต่อระบบคอมพิวเตอร์หรือขโมยข้อมูล",
+    choices:["Firmware","Malware","Freeware","Shareware"],correct:1,
+    explain:"Malware (Malicious Software) คือซอฟต์แวร์ที่ถูกสร้างขึ้นเพื่อสร้างความเสียหาย ขโมยข้อมูล หรือแฝงตัวในระบบโดยไม่ได้รับอนุญาต"},
+  {cat:"ฮาร์ดแวร์", q:"หน่วยประมวลผลกราฟิก ทำหน้าที่หลักเกี่ยวกับด้านใด",
+    choices:["ประมวลผลและแสดงผลภาพ/วิดีโอ","จัดเก็บข้อมูลถาวร","จ่ายไฟให้อุปกรณ์","เชื่อมต่อเครือข่ายไร้สาย"],correct:0,
+    explain:"GPU (Graphics Processing Unit) ถูกออกแบบมาเพื่อประมวลผลกราฟิกและภาพเคลื่อนไหวโดยเฉพาะ ทำให้แสดงผลภาพได้รวดเร็วและลื่นไหล"},
+  {cat:"อินเทอร์เน็ต", q:"“www” ในชื่อเว็บไซต์ย่อมาจากอะไร",
+    choices:["World Wide Web","World Wide Wire","Web Wide World","Wide World Web"],correct:0,
+    explain:"WWW ย่อมาจาก World Wide Web คือระบบเครือข่ายข้อมูลที่เชื่อมโยงเอกสารและสื่อผ่านลิงก์ทั่วโลกบนอินเทอร์เน็ต"},
+  {cat:"ซอฟต์แวร์", q:"กระบวนการแปลโค้ดจากภาษาระดับสูงให้เป็นภาษาเครื่องทั้งไฟล์ก่อนรันเรียกว่าอะไร",
+    choices:["Compile","Debug","Interpret ทีละบรรทัด","Format"],correct:0,
+    explain:"Compile คือการแปลซอร์สโค้ดทั้งไฟล์เป็นภาษาเครื่องก่อนนำไปรัน ต่างจาก Interpreter ที่แปลและรันทีละบรรทัด"},
+  {cat:"อัลกอริทึม", q:"ผังงาน (Flowchart) มีประโยชน์อย่างไรในการเขียนโปรแกรม",
+    choices:["ใช้เก็บข้อมูลถาวร","ใช้แสดงลำดับขั้นตอนการทำงานอย่างเป็นภาพ","ใช้เชื่อมต่ออินเทอร์เน็ต","ใช้เพิ่มความเร็วของ CPU"],correct:1,
+    explain:"ผังงานเป็นเครื่องมือที่ใช้สัญลักษณ์แสดงลำดับขั้นตอนการทำงานของโปรแกรมหรือกระบวนการ ช่วยให้วางแผนและสื่อสารตรรกะได้ชัดเจน"},
+  {cat:"เครือข่ายคอมพิวเตอร์", q:"Wi-Fi เป็นการเชื่อมต่อเครือข่ายประเภทใด",
+    choices:["เครือข่ายแบบมีสาย","เครือข่ายไร้สาย","เครือข่ายเฉพาะภายในเครื่องเดียว","เครือข่ายดาวเทียมเท่านั้น"],correct:1,
+    explain:"Wi-Fi ใช้คลื่นวิทยุในการรับส่งข้อมูลแทนสาย จึงจัดเป็นเทคโนโลยีเครือข่ายไร้สาย (Wireless LAN)"},
+  {cat:"หน่วยข้อมูล", q:"เรียงหน่วยความจุข้อมูลจากน้อยไปมากข้อใดถูกต้อง",
+    choices:["Byte < Bit < KB < MB","Bit < Byte < KB < MB","KB < Byte < Bit < MB","MB < KB < Byte < Bit"],correct:1,
+    explain:"ลำดับหน่วยที่ถูกต้องจากเล็กไปใหญ่คือ Bit < Byte < Kilobyte (KB) < Megabyte (MB) < Gigabyte (GB) ตามลำดับ"},
+  {cat:"ความปลอดภัยไซเบอร์", q:"การตั้งรหัสผ่านที่ปลอดภัยควรมีลักษณะอย่างไร",
+    choices:["ใช้วันเกิดของตนเองเพื่อให้จำง่าย","ใช้รหัสสั้น ๆ ซ้ำกับทุกบัญชี","ผสมตัวอักษร ตัวเลข สัญลักษณ์ และมีความยาวเพียงพอ","ใช้คำว่า password ตรง ๆ"],correct:2,
+    explain:"รหัสผ่านที่ปลอดภัยควรผสมตัวพิมพ์เล็ก-ใหญ่ ตัวเลข และสัญลักษณ์ มีความยาวเพียงพอ และไม่ซ้ำกันในแต่ละบัญชี เพื่อลดความเสี่ยงถูกเดาหรือแฮก"},
+  {cat:"ระบบคอมพิวเตอร์", q:"ข้อใดคือความหมายของ “Firmware”",
+    choices:["ซอฟต์แวร์ประยุกต์ทั่วไป","ซอฟต์แวร์ระบบที่ฝังอยู่ในฮาร์ดแวร์เพื่อควบคุมการทำงานพื้นฐาน","เกมคอมพิวเตอร์","เว็บเบราว์เซอร์"],correct:1,
+    explain:"Firmware คือซอฟต์แวร์ระดับต่ำที่ถูกฝังไว้ในชิปของฮาร์ดแวร์ เพื่อควบคุมการทำงานพื้นฐานของอุปกรณ์นั้น เช่น BIOS ในเมนบอร์ด"},
+  {cat:"อินเทอร์เน็ต", q:"โพรโทคอลใดใช้สำหรับการเข้าชมเว็บไซต์แบบเข้ารหัสเพื่อความปลอดภัย",
+    choices:["HTTP","HTTPS","FTP","SMTP"],correct:1,
+    explain:"HTTPS (HyperText Transfer Protocol Secure) เข้ารหัสข้อมูลระหว่างเบราว์เซอร์กับเซิร์ฟเวอร์ ทำให้ปลอดภัยกว่า HTTP ทั่วไป"},
+  {cat:"ฮาร์ดแวร์", q:"อุปกรณ์ใดจัดเป็นหน่วยแสดงผล (Output Device)",
+    choices:["คีย์บอร์ด","เมาส์","จอภาพ (Monitor)","ไมโครโฟน"],correct:2,
+    explain:"จอภาพทำหน้าที่แสดงผลข้อมูลออกจากคอมพิวเตอร์ให้ผู้ใช้เห็น จึงจัดเป็นหน่วยแสดงผล ส่วนอีก 3 ตัวเลือกเป็นหน่วยรับข้อมูล"},
+  {cat:"อัลกอริทึม", q:"“อัลกอริทึม” (Algorithm) หมายถึงสิ่งใด",
+    choices:["ชื่อของภาษาโปรแกรมภาษาหนึ่ง","ขั้นตอนวิธีการแก้ปัญหาที่ชัดเจนเป็นลำดับ","ชนิดของหน่วยความจำ","อุปกรณ์เชื่อมต่อเครือข่าย"],correct:1,
+    explain:"อัลกอริทึมคือลำดับขั้นตอนที่ชัดเจนและมีที่สิ้นสุดในการแก้ปัญหาหนึ่ง ๆ ก่อนจะนำไปเขียนเป็นโค้ดโปรแกรมจริง"},
+  {cat:"ความปลอดภัยไซเบอร์", q:"“ไฟร์วอลล์” (Firewall) มีหน้าที่หลักคืออะไร",
+    choices:["เพิ่มความเร็วอินเทอร์เน็ต","กรองและควบคุมการเข้า-ออกของข้อมูลบนเครือข่ายเพื่อความปลอดภัย","จัดเก็บไฟล์สำรอง","แสดงผลกราฟิก"],correct:1,
+    explain:"ไฟร์วอลล์ทำหน้าที่ตรวจสอบและกรองข้อมูลที่ผ่านเข้า-ออกเครือข่าย เพื่อป้องกันการเข้าถึงจากภายนอกที่ไม่ได้รับอนุญาต"}
+];
+
+const NUM_QUESTIONS = 10;
+const TIME_PER_Q = 20;
+
+let QUESTIONS = [];
+let current = 0;
+let score = 0;
+let streak = 0;
+let bestScore = null;
+let answered = false;
+let log = [];
+let timerId = null;
+let timeLeft = TIME_PER_Q;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildRound(){
+  const picked = shuffle(POOL).slice(0, NUM_QUESTIONS);
+  QUESTIONS = picked.map(item => {
+    const order = shuffle(item.choices.map((c, i) => i));
+    return {
+      cat: item.cat,
+      q: item.q,
+      choices: order.map(i => item.choices[i]),
+      correct: order.indexOf(item.correct),
+      explain: item.explain
+    };
+  });
+}
+
+const bootLog = document.getElementById('bootLog');
+const startBtn = document.getElementById('startBtn');
+const bootScreen = document.getElementById('bootScreen');
+const gamePanelWrap = document.getElementById('gamePanelWrap');
+const resultPanelWrap = document.getElementById('resultPanelWrap');
+
+const bootLines = [
+  "> HOLO-CORE OS v2.7 — powering up",
+  "> establishing quantum link ...",
+  "> loading module: ม.4 COMPUTER SCIENCE",
+  "> indexing 30 questions in databank ... OK",
+  "> shuffle engine ... online",
+  "> all systems nominal."
+];
+
+let li = 0;
+function typeBoot(){
+  if(li >= bootLines.length){
+    bootLog.innerHTML += '<span class="cursor"></span>';
+    startBtn.disabled = false;
+    return;
+  }
+  const line = bootLines[li];
+  const cls = line.includes('OK') || line.includes('online') || line.includes('nominal') ? 'tick' : 'ok';
+  bootLog.innerHTML += (li>0 ? '\n' : '') + '<span class="'+cls+'">'+line+'</span>';
+  li++;
+  setTimeout(typeBoot, 230);
+}
+typeBoot();
+
+startBtn.addEventListener('click', startRound);
+
+function startRound(){
+  buildRound();
+  current = 0; score = 0; streak = 0; log = [];
+  bootScreen.style.display = 'none';
+  resultPanelWrap.classList.remove('active');
+  gamePanelWrap.classList.add('active');
+  document.getElementById('totalNum').textContent = QUESTIONS.length;
+  buildTrace();
+  renderQuestion();
+}
+
+function buildTrace(){
+  const tp = document.getElementById('traceProgress');
+  tp.innerHTML = '';
+  QUESTIONS.forEach((_, i) => {
+    const n = document.createElement('div');
+    n.className = 'node' + (i===0 ? ' current' : '');
+    n.id = 'node-'+i;
+    tp.appendChild(n);
+  });
+}
+
+function updateTrace(){
+  QUESTIONS.forEach((_, i) => {
+    const n = document.getElementById('node-'+i);
+    n.className = 'node';
+    if(i < current) n.classList.add(log[i].correct ? 'done' : 'wrong');
+    else if(i === current) n.classList.add('current');
+  });
+}
+
+function updateStreakBadge(){
+  const badge = document.getElementById('streakBadge');
+  const val = document.getElementById('streakVal');
+  if(streak >= 2){
+    val.textContent = 'STREAK x' + streak;
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
+}
+
+function startTimer(){
+  clearInterval(timerId);
+  timeLeft = TIME_PER_Q;
+  const fill = document.getElementById('timerFill');
+  const label = document.getElementById('qTimer');
+  fill.style.transition = 'none';
+  fill.style.width = '100%';
+  fill.classList.remove('low');
+  label.textContent = timeLeft + 's';
+  requestAnimationFrame(() => { fill.style.transition = 'width 1s linear, background .3s ease'; });
+
+  timerId = setInterval(() => {
+    timeLeft--;
+    label.textContent = Math.max(timeLeft,0) + 's';
+    fill.style.width = Math.max((timeLeft/TIME_PER_Q)*100, 0) + '%';
+    if(timeLeft <= 5) fill.classList.add('low');
+    if(timeLeft <= 0){
+      clearInterval(timerId);
+      if(!answered) selectAnswer(-1);
+    }
+  }, 1000);
+}
+
+function renderQuestion(){
+  answered = false;
+  const item = QUESTIONS[current];
+  document.getElementById('curNum').textContent = current+1;
+  document.getElementById('scoreVal').textContent = score;
+  document.getElementById('qCat').textContent = item.cat;
+  updateTrace();
+  updateStreakBadge();
+
+  const box = document.getElementById('choices');
+  box.innerHTML = '';
+  const keys = ['A','B','C','D'];
+  document.getElementById('qText').textContent = item.q;
+  item.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice';
+    btn.innerHTML = '<span class="k">'+keys[i]+'</span><span>'+c+'</span>';
+    btn.addEventListener('click', () => selectAnswer(i));
+    box.appendChild(btn);
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.classList.remove('show');
+  fb.innerHTML = '';
+  document.getElementById('nextBtn').classList.remove('show');
+  startTimer();
+}
+
+function selectAnswer(i){
+  if(answered) return;
+  answered = true;
+  clearInterval(timerId);
+  const item = QUESTIONS[current];
+  const isCorrect = i === item.correct;
+  if(isCorrect){ score++; streak++; } else { streak = 0; }
+  log[current] = {correct: isCorrect, picked: i, timedOut: i === -1};
+  updateStreakBadge();
+
+  const buttons = document.querySelectorAll('.choice');
+  buttons.forEach((b, idx) => {
+    b.disabled = true;
+    if(idx === item.correct) b.classList.add('correct');
+    else if(idx === i) b.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('feedback');
+  let prefix = isCorrect ? 'ถูกต้อง — ' : (i === -1 ? 'หมดเวลา — ' : 'ยังไม่ถูก — ');
+  fb.innerHTML = '<b>' + prefix + '</b>' + item.explain;
+  fb.style.borderLeftColor = isCorrect ? 'var(--success)' : 'var(--danger)';
+  fb.classList.add('show');
+
+  document.getElementById('scoreVal').textContent = score;
+  updateTrace();
+
+  const nb = document.getElementById('nextBtn');
+  nb.textContent = current === QUESTIONS.length - 1 ? 'ดูผลการทดสอบ →' : 'ข้อถัดไป →';
+  nb.classList.add('show');
+}
+
+document.getElementById('nextBtn').addEventListener('click', goNext);
+function goNext(){
+  current++;
+  if(current >= QUESTIONS.length){
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if(!gamePanelWrap.classList.contains('active')) return;
+  const k = e.key.toUpperCase();
+  const map = {'A':0,'B':1,'C':2,'D':3};
+  if(!answered && map.hasOwnProperty(k)){
+    const btns = document.querySelectorAll('.choice');
+    if(btns[map[k]]) selectAnswer(map[k]);
+  } else if(answered && (k === 'ENTER' || e.key === ' ')){
+    goNext();
+  }
+});
+
+function showResult(){
+  clearInterval(timerId);
+  gamePanelWrap.classList.remove('active');
+  resultPanelWrap.classList.add('active');
+  document.getElementById('finalScore').textContent = score + '/' + QUESTIONS.length;
+
+  if(bestScore === null || score > bestScore) bestScore = score;
+  document.getElementById('bestVal').textContent = bestScore + '/' + QUESTIONS.length;
+
+  const pct = Math.round((score/QUESTIONS.length)*100);
+  let rankText, rankColor;
+  if(pct >= 90){ rankText='ยอดเยี่ยม — เชี่ยวชาญคอมพิวเตอร์'; rankColor='var(--success)'; }
+  else if(pct >= 70){ rankText='ดี — พื้นฐานแน่น'; rankColor='var(--cyan)'; }
+  else if(pct >= 50){ rankText='พอใช้ — ควรทบทวนเพิ่มเติม'; rankColor='var(--amber)'; }
+  else{ rankText='ควรทบทวนบทเรียนใหม่'; rankColor='var(--danger)'; }
+
+  document.getElementById('finalSub').textContent = 'ทำถูก ' + score + ' จาก ' + QUESTIONS.length + ' ข้อ (' + pct + '%)';
+  document.getElementById('finalBest').textContent = 'คะแนนสูงสุดของเซสชันนี้: ' + bestScore + '/' + QUESTIONS.length;
+  const badge = document.getElementById('rankBadge');
+  badge.textContent = rankText;
+  badge.style.color = rankColor;
+  badge.style.background = 'color-mix(in srgb, ' + rankColor + ' 16%, transparent)';
+  badge.style.border = '1px solid ' + rankColor;
+  badge.style.boxShadow = '0 0 20px -6px ' + rankColor;
+
+  const rl = document.getElementById('reviewList');
+  rl.innerHTML = '';
+  QUESTIONS.forEach((item, i) => {
+    const r = log[i];
+    const row = document.createElement('div');
+    row.className = 'review-item';
+    const rightLabel = r.timedOut ? 'หมดเวลา' : (r.correct ? 'ถูก' : 'ผิด');
+    row.innerHTML = '<span class="mark ' + (r.correct?'y':'n') + '">' + (r.correct?'✓':'✗') + '</span><span class="rq">ข้อ ' + (i+1) + ': ' + item.cat + '</span><span class="rt">' + rightLabel + '</span>';
+    rl.appendChild(row);
+  });
+}
+
+document.getElementById('retryBtn').addEventListener('click', () => {
+  resultPanelWrap.classList.remove('active');
+  startRound();
+});
+</script>
+</body>
+</html>
